@@ -21,6 +21,14 @@ var gAnimalGlobalRotation = 0; // Rotation angle from UI slider
 var head_animation = 0;        // Head animation angle
 var g_Animation = false;       // Animation toggle state
 
+var g_bodyAngle = 0;       // Body sway
+var g_tailWag = 0;        // Tail wagging
+var g_legAngle = 0;       // Leg movement
+var g_earFlop = 0;        // Ear flopping
+var g_dogHoverLocation = 0; // Vertical hover position
+var g_breathe = 0;        // Breathing animation
+var g_headTilt = 0;       // Head tilting animation
+
 // Animation Timing
 var g_startTime = performance.now()/1000.0; // Animation start timestamp
 var g_seconds = performance.now()/1000.0 - g_startTime; // Elapsed time
@@ -424,9 +432,266 @@ function adjustVisuals() {
 }
 
 
-function updateAnimationAngles(){
-   if(g_Animation){
-      g_jointAngle = 10*Math.sin(g_seconds);
-      head_animation = 15*Math.sin(g_seconds);
+
+
+// -------------- RENDER DOG --------------
+function renderDogShapes() {
+   // Enhanced color palette with subtle variations
+   let dogColor = [0.82, 0.63, 0.43, 1];     // Natural fur color
+   let bellyColor = [0.88, 0.73, 0.58, 1];   // Lighter underbelly
+   let noseColor = [0.15, 0.15, 0.15, 1];    // Deep black nose
+   let eyeColor = [0.25, 0.15, 0.05, 1];     // Rich brown eyes
+   let pawColor = [0.3, 0.2, 0.15, 1];       // Darker paw pads
+   
+   // BODY - More anatomically correct proportions
+   var body = new Cube();
+   body.color = dogColor;
+   body.matrix.translate(10, g_dogHoverLocation + 0.7, 5.5);
+   body.matrix.rotate(g_bodyAngle * 0.7, 1, 0, 0); // Reduced rotation for natural movement
+   var bodyCoordMat = new Matrix4(body.matrix);
+   body.matrix.scale(1.0, 0.8, 1.4); // Longer, more natural body shape
+   body.render();
+   
+   // CHEST - Added chest definition
+   var chest = new Cube();
+   chest.color = bellyColor;
+   chest.matrix = bodyCoordMat;
+   chest.matrix.translate(0.1, -0.2, -0.2);
+   chest.matrix.scale(0.8, 0.6, 0.4);
+   chest.matrix.rotate(g_breathe * 0.5, 0, 0, 1); // Subtle breathing
+   chest.render();
+   
+   // BELLY - More natural curve
+   var belly = new Cube();
+   belly.color = bellyColor;
+   belly.matrix = bodyCoordMat;
+   belly.matrix.translate(0.1, -0.3, 0.2);
+   belly.matrix.scale(0.7, 0.4, 1.0);
+   belly.matrix.rotate(g_breathe * 0.3, 0, 0, 1); // Gentler breathing movement
+   belly.render();
+   
+   var bodyCoordMatForNeck = new Matrix4(body.matrix);
+   var bodyCoordMatForLegs = new Matrix4(body.matrix);
+   var bodyCoordMatForTail = new Matrix4(body.matrix);
+   
+   renderDogHead(dogColor, bellyColor, noseColor, eyeColor, bodyCoordMatForNeck);
+   renderDogLegs(dogColor, bellyColor, pawColor, bodyCoordMatForLegs);
+   renderDogTail(dogColor, bodyCoordMatForTail);
+}
+
+
+function renderDogHead(dogColor, bellyColor, noseColor, eyeColor, bodyCoordMatForNeck) {
+   // NECK - More muscular definition
+   var neck = new Cube();
+   neck.color = dogColor;
+   neck.matrix = bodyCoordMatForNeck;
+   neck.matrix.translate(0.4, 0.7, -0.2);
+   neck.matrix.rotate(g_headTilt * 0.6, 0, 0, 1); // Smoother head movement
+   var neckCoordMat = new Matrix4(neck.matrix);
+   neck.matrix.scale(0.5, 0.5, 0.5);
+   neck.render();
+   
+   // HEAD - More natural skull shape
+   var head = new Cube();
+   head.color = dogColor;
+   head.matrix = neckCoordMat;
+   head.matrix.translate(0, 0.35, -0.3);
+   var headCoordMat = new Matrix4(head.matrix);
+   head.matrix.scale(0.6, 0.5, 0.55);
+   head.render();
+   
+   renderDogSnout(dogColor, bellyColor, noseColor, headCoordMat);
+   renderDogEars(dogColor, bellyColor, headCoordMat);
+   renderDogEyes(eyeColor, headCoordMat);
+}
+
+
+function renderDogSnout(dogColor, bellyColor, noseColor, headCoordMat) {
+   // Upper snout - More defined muzzle
+   var upperSnout = new Cube();
+   upperSnout.color = dogColor;
+   upperSnout.matrix = headCoordMat;
+   upperSnout.matrix.translate(0.15, -0.05, -0.5);
+   upperSnout.matrix.scale(0.35, 0.25, 0.45);
+   upperSnout.render();
+   
+   // Lower jaw - Better defined
+   var lowerSnout = new Cube();
+   lowerSnout.color = bellyColor;
+   lowerSnout.matrix = headCoordMat;
+   lowerSnout.matrix.translate(0.15, -0.2, -0.45);
+   lowerSnout.matrix.scale(0.3, 0.15, 0.4);
+   lowerSnout.render();
+   
+   // Nose - More detailed
+   var nose = new Cube();
+   nose.color = noseColor;
+   nose.matrix = headCoordMat;
+   nose.matrix.translate(0.25, 0, -0.55);
+   nose.matrix.scale(0.12, 0.12, 0.06);
+   nose.render();
+   
+   // Add nose bridge
+   var noseBridge = new Cube();
+   noseBridge.color = dogColor;
+   noseBridge.matrix = headCoordMat;
+   noseBridge.matrix.translate(0.25, 0.1, -0.5);
+   noseBridge.matrix.scale(0.1, 0.1, 0.3);
+   noseBridge.render();
+}
+
+
+function renderDogEars(dogColor, bellyColor, headCoordMat) {
+   // Left ear - two segments for floppiness
+   var leftEarBase = new Cube();
+   leftEarBase.color = dogColor;
+   leftEarBase.matrix = headCoordMat;
+   leftEarBase.matrix.translate(0.4, 0.4, 0);
+   leftEarBase.matrix.rotate(g_earFlop, 0, 0, 1);
+   var leftEarTipMat = new Matrix4(leftEarBase.matrix);
+   leftEarBase.matrix.scale(0.15, 0.25, 0.08);
+   leftEarBase.render();
+   
+   var leftEarTip = new Cube();
+   leftEarTip.color = bellyColor;
+   leftEarTip.matrix = leftEarTipMat;
+   leftEarTip.matrix.translate(0, 0.25, 0);
+   leftEarTip.matrix.rotate(g_earFlop * 1.5, 0, 0, 1);
+   leftEarTip.matrix.scale(0.15, 0.2, 0.08);
+   leftEarTip.render();
+   
+   // Right ear - mirrored
+   var rightEarBase = new Cube();
+   rightEarBase.color = dogColor;
+   rightEarBase.matrix = headCoordMat;
+   rightEarBase.matrix.translate(-0.1, 0.4, 0);
+   rightEarBase.matrix.rotate(-g_earFlop, 0, 0, 1);
+   var rightEarTipMat = new Matrix4(rightEarBase.matrix);
+   rightEarBase.matrix.scale(0.15, 0.25, 0.08);
+   rightEarBase.render();
+   
+   var rightEarTip = new Cube();
+   rightEarTip.color = bellyColor;
+   rightEarTip.matrix = rightEarTipMat;
+   rightEarTip.matrix.translate(0, 0.25, 0);
+   rightEarTip.matrix.rotate(-g_earFlop * 1.5, 0, 0, 1);
+   rightEarTip.matrix.scale(0.15, 0.2, 0.08);
+   rightEarTip.render();
+}
+
+function renderDogEyes(eyeColor, headCoordMat) {
+   // Eye whites
+   var leftEyeWhite = new Cube();
+   leftEyeWhite.color = [1, 1, 1, 1];
+   leftEyeWhite.matrix = headCoordMat;
+   leftEyeWhite.matrix.translate(0.35, 0.15, -0.25);
+   leftEyeWhite.matrix.scale(0.12, 0.12, 0.05);
+   leftEyeWhite.render();
+   
+   var rightEyeWhite = new Cube();
+   rightEyeWhite.color = [1, 1, 1, 1];
+   rightEyeWhite.matrix = headCoordMat;
+   rightEyeWhite.matrix.translate(0.05, 0.15, -0.25);
+   rightEyeWhite.matrix.scale(0.12, 0.12, 0.05);
+   rightEyeWhite.render();
+   
+   // Eye pupils
+   var leftEye = new Cube();
+   leftEye.color = eyeColor;
+   leftEye.matrix = headCoordMat;
+   leftEye.matrix.translate(0.38, 0.18, -0.26);
+   leftEye.matrix.scale(0.06, 0.06, 0.05);
+   leftEye.render();
+   
+   var rightEye = new Cube();
+   rightEye.color = eyeColor;
+   rightEye.matrix = headCoordMat;
+   rightEye.matrix.translate(0.08, 0.18, -0.26);
+   rightEye.matrix.scale(0.06, 0.06, 0.05);
+   rightEye.render();
+}
+
+function renderDogLegs(dogColor, bellyColor, pawColor, bodyCoordMatForLegs) {
+   var legPositions = [
+       {x: 0.2, z: 0.2, angle: 1, length: 1.0},    // Front Right
+       {x: 0.8, z: 0.2, angle: -1, length: 1.0},   // Front Left
+       {x: 0.2, z: 1.0, angle: -1, length: 0.9},   // Back Right
+       {x: 0.8, z: 1.0, angle: 1, length: 0.9}     // Back Left
+   ];
+   
+   legPositions.forEach((pos) => {
+       // Upper leg - More muscular
+       var upperLeg = new Cube();
+       upperLeg.color = dogColor;
+       upperLeg.matrix = bodyCoordMatForLegs;
+       upperLeg.matrix.translate(pos.x, -0.2, pos.z);
+       upperLeg.matrix.rotate(pos.angle * g_legAngle * 0.8, 1, 0, 0);
+       var lowerLegMat = new Matrix4(upperLeg.matrix);
+       upperLeg.matrix.scale(0.25, 0.45 * pos.length, 0.25);
+       upperLeg.render();
+       
+       // Lower leg - Better joint definition
+       var lowerLeg = new Cube();
+       lowerLeg.color = dogColor;
+       lowerLeg.matrix = lowerLegMat;
+       lowerLeg.matrix.translate(0, -0.45, 0);
+       lowerLeg.matrix.rotate(pos.angle * g_legAngle * 0.4, 1, 0, 0);
+       var pawMat = new Matrix4(lowerLeg.matrix);
+       lowerLeg.matrix.scale(0.2, 0.35 * pos.length, 0.2);
+       lowerLeg.render();
+       
+       // Paw - More detailed
+       var paw = new Cube();
+       paw.color = pawColor;
+       paw.matrix = pawMat;
+       paw.matrix.translate(0, -0.35, 0);
+       paw.matrix.scale(0.25, 0.12, 0.3);
+       paw.render();
+       
+       // Paw pad
+       var pawPad = new Cube();
+       pawPad.color = pawColor;
+       pawPad.matrix = pawMat;
+       pawPad.matrix.translate(0, -0.38, 0.1);
+       pawPad.matrix.scale(0.2, 0.05, 0.15);
+       pawPad.render();
+   });
+}
+
+
+function renderDogTail(dogColor, bodyCoordMatForTail) {
+   // Tail base
+   var tailBase = new Cube();
+   tailBase.color = dogColor;
+   tailBase.matrix = bodyCoordMatForTail;
+   tailBase.matrix.translate(0.4, 0.3, 1.2);
+   tailBase.matrix.rotate(30 + g_tailWag, 0, 1, 0);
+   tailBase.matrix.rotate(45, 1, 0, 0);
+   var tailTipMat = new Matrix4(tailBase.matrix);
+   tailBase.matrix.scale(0.15, 0.15, 0.3);
+   tailBase.render();
+   
+   // Tail tip
+   var tailTip = new Cube();
+   tailTip.color = dogColor;
+   tailTip.matrix = tailTipMat;
+   tailTip.matrix.translate(0, 0, 0.3);
+   tailTip.matrix.rotate(g_tailWag * 1.5, 0, 1, 0);
+   tailTip.matrix.scale(0.12, 0.12, 0.25);
+   tailTip.render();
+}
+
+function updateAnimationAngles() {
+   if(g_Animation) {
+       g_seconds = performance.now()/1000.0 - g_startTime;
+       
+       // Smoother, more natural movements
+       g_bodyAngle = 3 * Math.sin(g_seconds * 1.5);  // Gentler body sway
+       g_tailWag = 35 * Math.sin(g_seconds * 6);     // More natural tail movement
+       g_legAngle = 20 * Math.sin(g_seconds * 3);    // Smoother walking motion
+       g_earFlop = 10 * Math.sin(g_seconds * 2);     // Subtle ear movement
+       g_dogHoverLocation = 0.08 * Math.sin(g_seconds * 1.5); // Subtle body bounce
+       g_breathe = 5 * Math.sin(g_seconds * 1.2);    // Natural breathing rhythm
+       g_headTilt = 5 * Math.sin(g_seconds * 0.8);   // Occasional head tilts
    }
 }

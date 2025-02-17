@@ -41,4 +41,6 @@ function drawAllShapes() {
     head.matrix.scale(0.35, 0.35, 0.35);
     head.matrix.translate(-0.5, 0.25, -1.25);
     head.renderfast();
+
+    renderDogShapes();
 }
